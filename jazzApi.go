@@ -27,6 +27,7 @@ func main() {
 
 	router := gin.Default()
 	router.GET("/albums", getAlbums)
+	router.POST("/create", createAlbum)
 
 	router.Run("localhost:80")
 }
@@ -58,4 +59,15 @@ func readFile() (err error) {
 
 func getAlbums(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, albums)
+}
+
+func createAlbum(c *gin.Context) {
+	var newAlbum album
+
+	if err := c.BindJSON(&newAlbum); err != nil {
+		return
+	}
+
+	albums = append(albums, newAlbum)
+	c.IndentedJSON(http.StatusCreated, newAlbum)
 }
