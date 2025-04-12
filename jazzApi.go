@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"log"
+	"strconv"
 )
 
 type album struct {
@@ -28,6 +29,7 @@ func main() {
 	router := gin.Default()
 	router.GET("/albums", getAlbums)
 	router.POST("/create", createAlbum)
+	router.GET("/albums/:id", searchAlbum)
 
 	router.Run("localhost:80")
 }
@@ -70,4 +72,17 @@ func createAlbum(c *gin.Context) {
 
 	albums = append(albums, newAlbum)
 	c.IndentedJSON(http.StatusCreated, newAlbum)
+}
+
+func searchAlbum(c *gin.Context) {
+	id := c.Param("id")
+	idInt, _ := strconv.Atoi(id)
+
+	for _, a := range albums {
+		if a.ID == idInt {
+			c.IndentedJSON(http.StatusOK, a)
+			return
+		}
+	}
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "album not found"})
 }
