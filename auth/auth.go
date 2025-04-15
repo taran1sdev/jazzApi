@@ -3,7 +3,7 @@ package auth
 import (
 	"time"
 	"crypto/md5"
-	"fmt"
+	"errors"
 	"net/http"
 	"encoding/json"
 	"encoding/hex"
@@ -49,7 +49,7 @@ func getUsers() (err error) {
 
 	f, err = os.Open("data/userExample.json")
 	if err != nil {
-		return fmt.Errorf("Error opening user file")
+		return errors.New("Error opening user file")
 	}
 
 	fInfo, _ := f.Stat()
@@ -58,7 +58,7 @@ func getUsers() (err error) {
 	_, err = f.Read(b)
 
 	if err != nil {
-		return fmt.Errorf("Error reading user file")
+		return errors.New("Error reading user file")
 	}
 
 	err = json.Unmarshal(b, &users)
@@ -84,17 +84,16 @@ func HandleLogin(c *gin.Context) {
 	
 	err := getUsers()
 
-	if err != nil{
-		fmt.Println(err)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error loading user data"})
+		return
 	}
 
 	var role string
 
 	h := getHash(password)
-	fmt.Println(h)
 	
 	for _, u := range users {
-		fmt.Println(u.Password)
 		if u.Username == username && u.Password == h {
 			role = u.Role 
 		}
@@ -109,7 +108,7 @@ func HandleLogin(c *gin.Context) {
 	token, err := createToken(username, role)
 	
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		c.Abort()
 		return
 	}
@@ -117,35 +116,43 @@ func HandleLogin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
-func verifyToken(tokenString string) (map[string]interface{}, error) {
+func verifyToken(tokenString string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token)(interface{},error){
 		return secretKey, nil
 	})
 
+	if !token.Valid {
+		return nil, errors.New("Invalid JWT Token")
+	}
+	
 	if err != nil {
 		return nil, err
 	}
-
-	if !token.Valid {
-		return nil, fmt.Errorf("Invalid JWT Token")
-	}
 	
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+	
 		return claims, nil
 	}
 
-	return nil, fmt.Errorf("Error Mapping claims")
+	return nil, errors.New("Error Mapping claims")
 }
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := c.GetHeader("Authorization")
 		
+		// Checks if Header is missing
+		if len(tokenString) == 0 {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			c.Abort()
+			return
+		}
+
 		// Verify JWT
 		claims, valid := verifyToken(tokenString)
 
 		if valid != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": valid})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": valid.Error()})
 			c.Abort()
 			return
 		}
@@ -168,17 +175,4 @@ func AdminMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
-}
-
-
-func HandleGeneral(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"message": "General Resource Accessed",
-	})
-}
-
-func HandleAdmin(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Admin Resource Accessed",
-	})
 }

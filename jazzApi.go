@@ -10,6 +10,7 @@ import (
 	"os"
 	"log"
 	"strconv"
+	"fmt"
 )
 
 type album struct {
@@ -75,6 +76,7 @@ func getAlbums(c *gin.Context) {
 }
 
 func createAlbum(c *gin.Context) {
+	fmt.Println("Reached Here")
 	var newAlbum album
 
 	if err := c.BindJSON(&newAlbum); err != nil {
