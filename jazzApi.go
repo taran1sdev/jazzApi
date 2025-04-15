@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	
+	"jazzApi/auth"
 
 	"net/http"
 	"encoding/json"
@@ -27,9 +29,18 @@ func main() {
 	}
 
 	router := gin.Default()
+	
+	router.POST("/login", auth.HandleLogin)
+	
+	// User endpoints
+	router.Use(auth.AuthMiddleware())
 	router.GET("/albums", getAlbums)
-	router.POST("/create", createAlbum)
 	router.GET("/albums/:id", searchAlbum)
+	
+	// Admin endpoint
+	// Add user - user/create
+	// List users - user
+	router.POST("/create", auth.AdminMiddleware(), createAlbum)
 
 	router.Run("localhost:80")
 }
@@ -37,7 +48,7 @@ func main() {
 func readFile() (err error) {
 	var f *os.File
 
-	f, err = os.Open("example.json")
+	f, err = os.Open("data/example.json")
 	if err != nil {
 		return 
 	}
