@@ -10,7 +10,6 @@ import (
 	"os"
 	"log"
 	"strconv"
-	"fmt"
 )
 
 type album struct {
@@ -39,8 +38,9 @@ func main() {
 	router.GET("/albums/:id", searchAlbum)
 	
 	// Admin endpoint
-	// Add user - user/create
-	// List users - user
+	router.GET("/users", auth.AdminMiddleware(), getUsers)
+	router.POST("/users/create", auth.AdminMiddleware(), createUser)
+	
 	router.POST("/create", auth.AdminMiddleware(), createAlbum)
 
 	router.Run("localhost:80")
@@ -76,7 +76,6 @@ func getAlbums(c *gin.Context) {
 }
 
 func createAlbum(c *gin.Context) {
-	fmt.Println("Reached Here")
 	var newAlbum album
 
 	if err := c.BindJSON(&newAlbum); err != nil {
@@ -98,4 +97,43 @@ func searchAlbum(c *gin.Context) {
 		}
 	}
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "album not found"})
+}
+
+func getUsers(c *gin.Context) {
+	if auth.Users == nil {
+		err := auth.GetUsers()
+	
+		if err != nil {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	c.IndentedJSON(http.StatusOK, auth.Users)
+}
+
+func createUser(c *gin.Context) {
+	var newUser auth.User
+	
+
+	
+	if c.GetHeader("Content-Type") == "application/json" {
+		if err := c.BindJSON(&newUser); err != nil {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Unable to create new user"})
+			return
+		}
+	} else {
+		if c.PostForm("username") != ""  && c.PostForm("password") != "" && c.PostForm("role") != "" {	
+			newUser.ID = auth.Users[len(auth.Users)-1].ID + 1
+			newUser.Username = c.PostForm("username")
+			newUser.Password = auth.GetHash(c.PostForm("password"))
+			newUser.Role = c.PostForm("role")
+		} else {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error":"Missing Necessary Fields"})
+			return
+		}
+	}
+
+	auth.Users = append(auth.Users, newUser)
+	c.IndentedJSON(http.StatusCreated, newUser)
 }

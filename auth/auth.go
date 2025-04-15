@@ -22,7 +22,7 @@ type User struct {
 	Role 	 string	`json:"role"`
 }
 
-var users []User
+var Users []User
 
 var secretKey = []byte("secretkey") // Change this in prod
 
@@ -44,7 +44,7 @@ func createToken(username string, role string) (string, error) {
 
 // Opens the user json file (will refactor to read from a database)
 
-func getUsers() (err error) {
+func GetUsers() (err error) {
 	var f *os.File
 
 	f, err = os.Open("data/userExample.json")
@@ -61,7 +61,7 @@ func getUsers() (err error) {
 		return errors.New("Error reading user file")
 	}
 
-	err = json.Unmarshal(b, &users)
+	err = json.Unmarshal(b, &Users)
 
 	if err != nil {
 		return
@@ -71,7 +71,7 @@ func getUsers() (err error) {
 
 // Function to return md5 hash 
 
-func getHash(text string) string {
+func GetHash(text string) string {
 	hash := md5.Sum([]byte(text))
 	return hex.EncodeToString(hash[:])
 }
@@ -79,33 +79,45 @@ func getHash(text string) string {
 // Function handles login with username/password credentials - refactor to accept json requests also
 
 func HandleLogin(c *gin.Context) {
-	username := c.PostForm("username")
-	password := c.PostForm("password")
+	var login User
 	
-	err := getUsers()
+	if c.GetHeader("Content-Type") == "application/json" {
+		if err := c.BindJSON(&login); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	} else {
+		if c.PostForm("username") != "" && c.PostForm("password") != "" {
+			login.Username = c.PostForm("username")
+			login.Password = c.PostForm("password")
+	
+		} else {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Missing Necessary Fields"})
+		}
+	}
+	
+	err := GetUsers()
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error loading user data"})
 		return
 	}
 
-	var role string
-
-	h := getHash(password)
+	h := GetHash(login.Password)
 	
-	for _, u := range users {
-		if u.Username == username && u.Password == h {
-			role = u.Role 
+	for _, u := range Users {
+		if u.Username == login.Username && u.Password == h {
+			login.Role = u.Role 
 		}
 	}
-	if role == "" {
+	if login.Role == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Credentials"})
 		return
 	}
 	
 	// Creates JWT
 
-	token, err := createToken(username, role)
+	token, err := createToken(login.Username, login.Role)
 	
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
