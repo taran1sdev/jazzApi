@@ -87,12 +87,12 @@ Response:
 
 ### /albums/create
 
-A POST request to the `/albums/create` endpoint with valid JSOM data will create a new album, the Response will contain the newly created object.
+A POST request to the `/albums/create` endpoint with valid JSOM data will create a new album and automatically generate it's ID, the Response will contain the newly created object.
 
 Example Request:
 
 ```bash
-    curl -X POST localhost/albums/create -H 'Authorization: <Admin JWT>' -H 'Content-Type: application/json' --data '{"id":4, "title": "example", "artist": "example", "price": 1.99}'
+    curl -X POST localhost/albums/create -H 'Authorization: <Admin JWT>' -H 'Content-Type: application/json' --data '{"title": "example", "artist": "example", "price": 1.99}'
 ```
 
 Response:

@@ -81,7 +81,7 @@ func createAlbum(c *gin.Context) {
 	if err := c.BindJSON(&newAlbum); err != nil {
 		return
 	}
-
+	newAlbum.ID = albums[len(albums)-1].ID + 1
 	albums = append(albums, newAlbum)
 	c.IndentedJSON(http.StatusCreated, newAlbum)
 }
