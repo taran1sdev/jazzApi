@@ -38,10 +38,10 @@ func main() {
 	router.GET("/albums/:id", searchAlbum)
 	
 	// Admin endpoint
+	router.POST("albums/create", auth.AdminMiddleware(), createAlbum)
+
 	router.GET("/users", auth.AdminMiddleware(), getUsers)
 	router.POST("/users/create", auth.AdminMiddleware(), createUser)
-	
-	router.POST("/create", auth.AdminMiddleware(), createAlbum)
 
 	router.Run("localhost:80")
 }
@@ -124,7 +124,6 @@ func createUser(c *gin.Context) {
 		}
 	} else {
 		if c.PostForm("username") != ""  && c.PostForm("password") != "" && c.PostForm("role") != "" {	
-			newUser.ID = auth.Users[len(auth.Users)-1].ID + 1
 			newUser.Username = c.PostForm("username")
 			newUser.Password = auth.GetHash(c.PostForm("password"))
 			newUser.Role = c.PostForm("role")
@@ -133,7 +132,9 @@ func createUser(c *gin.Context) {
 			return
 		}
 	}
+	
 
+	newUser.ID = auth.Users[len(auth.Users)-1].ID + 1
 	auth.Users = append(auth.Users, newUser)
 	c.IndentedJSON(http.StatusCreated, newUser)
 }
